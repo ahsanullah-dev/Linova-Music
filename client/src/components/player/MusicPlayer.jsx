@@ -51,7 +51,9 @@ export const MusicPlayer = () => {
     skipPrevious,
     setIsExpanded,
     toggleLyrics,
-    toggleQueue
+    toggleQueue,
+    isNowPlayingPanelOpen,
+    toggleNowPlayingPanel
   } = usePlayerStore();
 
   const { likedTrackIds, toggleLike } = useLibraryStore();
@@ -242,13 +244,13 @@ export const MusicPlayer = () => {
         </button>
 
         <button
-          onClick={usePlayerStore.getState().toggleNowPlayingPanel}
+          onClick={toggleNowPlayingPanel}
           className={`hidden xl:block p-2 rounded-full transition-colors ${
-            usePlayerStore((s) => s.isNowPlayingPanelOpen) ? 'text-emerald-400 bg-white/10' : 'text-gray-400 hover:text-white'
+            isNowPlayingPanelOpen ? 'text-emerald-400 bg-white/10' : 'text-gray-400 hover:text-white'
           }`}
           title="Now Playing View (Singer Details)"
         >
-          {usePlayerStore((s) => s.isNowPlayingPanelOpen) ? (
+          {isNowPlayingPanelOpen ? (
             <PanelRightClose className="w-4 h-4" />
           ) : (
             <PanelRightOpen className="w-4 h-4" />
