@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: linova-music
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+      - MUSIC_PROVIDER=global
+      - YOUTUBE_MUSIC_ENABLED=true
+      - JWT_SECRET=linova_super_secret_jwt_key_music_2026_stream
+      - MONGODB_URI=mongodb://mongo:27017/linova_music
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:7.0
+    container_name: linova-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

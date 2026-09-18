@@ -1,0 +1,33 @@
+{
+  "name": "linova-server",
+  "version": "1.0.0",
+  "description": "LINOVA MUSIC Backend API Server",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node --test tests/**/*.test.js"
+  },
+  "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
+    "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.3.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.4.1",
+    "morgan": "^1.10.0",
+    "node-youtube-music": "^0.10.3",
+    "play-dl": "^1.9.7",
+    "youtubei.js": "^18.0.0",
+    "ytmusic-api": "^5.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.2"
+  }
+}
