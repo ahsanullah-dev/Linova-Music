@@ -1,5 +1,6 @@
 import { providerManager, getRequestProvider } from '../services/musicProvider/index.js';
 import { generateRecommendations } from '../services/recommendation/recommendationService.js';
+import { buildRadioQueue } from '../services/recommendation/radioService.js';
 import { mockStore } from '../models/mockStore.js';
 
 export const getHome = async (req, res, next) => {
@@ -126,6 +127,47 @@ export const getRecommendations = async (req, res, next) => {
       success: true,
       data: recommendations
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Spotify-style autoplay radio. Given a seed track (the one currently playing),
+ * returns a genre-matched continuation queue so playback keeps going after the
+ * current queue is exhausted - even when the song came from a one-off search.
+ */
+export const getRadio = async (req, res, next) => {
+  try {
+    const { trackId, title, artist, album, exclude, limit } = req.query;
+
+    if (!trackId && !title && !artist) {
+      return res.status(400).json({
+        success: false,
+        error: { code: 'SEED_REQUIRED', message: 'A seed trackId, title or artist is required.' }
+      });
+    }
+
+    let seed = { id: trackId, title, artist, album: album ? { name: album } : null };
+
+    // Enrich the seed from the provider when only an id was supplied, so genre
+    // detection has an artist/title to work with.
+    if (trackId && !artist) {
+      try {
+        const provider = getRequestProvider(req);
+        const full = await provider.getTrack(trackId);
+        if (full) seed = { ...full, ...seed, artist: seed.artist || full.artist, title: seed.title || full.title };
+      } catch (e) {
+        // Fall through with whatever the client gave us.
+      }
+    }
+
+    const excludeIds = (exclude || '').split(',').map(s => s.trim()).filter(Boolean);
+    const max = Math.min(parseInt(limit, 10) || 20, 40);
+
+    const radio = await buildRadioQueue(seed, excludeIds, max);
+
+    res.json({ success: true, data: radio });
   } catch (error) {
     next(error);
   }

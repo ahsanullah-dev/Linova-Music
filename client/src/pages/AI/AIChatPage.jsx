@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  Bot, Send, Music2, Play, Pause, X, Image as ImageIcon,
+  Bot, Send, Music2, Play, Pause, X, Image as ImageIcon, Lock,
   Loader2, Search, ChevronRight, ImagePlus, ListMusic
 } from 'lucide-react';
 import { usePlayerStore } from '../../stores/playerStore.js';
+import { useAuthStore } from '../../stores/authStore.js';
+import { useAppStore } from '../../stores/appStore.js';
 import { api } from '../../services/api.js';
 
 // ─── Playable Song Card (AI suggestion) ───────────────────────────────────────
@@ -189,8 +191,18 @@ function renderMarkdown(text) {
 }
 
 // ─── Main Chat Page ─────────────────────────────────────────────────────────────
+const WELCOME_MESSAGE = {
+  id: 'init', role: 'assistant',
+  content: "Hey! I'm **Linova AI** 🎵 — your personal music expert. Attach any song from the catalog or an image from your gallery and I'll analyze it and suggest similar vibes. Or just ask me anything about music!",
+  songs: [], timestamp: Date.now()
+};
+
 export const AIChatPage = () => {
   const { currentTrack } = usePlayerStore();
+  const { isAuthenticated, isLoading: isAuthLoading } = useAuthStore();
+  const { openAuthModal } = useAppStore();
+
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
 
   const [messages, setMessages] = useState([{
     id: 'init', role: 'assistant',
@@ -211,6 +223,64 @@ export const AIChatPage = () => {
   const imageInputRef = useRef(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isLoading]);
+
+  // Load persisted chat history. Messages live on the server per user, so the
+  // conversation survives navigation, refreshes and new devices - it is only
+  // ever removed when the user explicitly clears it.
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isAuthenticated) {
+      setIsHistoryLoading(false);
+      return;
+    }
+
+    (async () => {
+      setIsHistoryLoading(true);
+      try {
+        const stored = await api.getAiHistory();
+        if (cancelled) return;
+
+        if (Array.isArray(stored) && stored.length > 0) {
+          const restored = stored.map((m) => ({
+            id: m.clientId || m._id,
+            role: m.role,
+            content: m.content,
+            songs: m.songs || [],
+            attachedSong: m.attachedSong || null,
+            timestamp: new Date(m.createdAt).getTime()
+          }));
+          setMessages([WELCOME_MESSAGE, ...restored]);
+
+          // Re-resolve playable tracks for restored suggestions.
+          restored.forEach((m) => (m.songs || []).forEach((s) => resolveTrack(s)));
+        }
+      } catch (e) {
+        console.warn('[AI] Could not load chat history:', e);
+      } finally {
+        if (!cancelled) setIsHistoryLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  const persistMessage = useCallback(async (msg) => {
+    if (!isAuthenticated) return;
+    try {
+      await api.addAiMessage({
+        role: msg.role,
+        content: msg.content,
+        songs: msg.songs || [],
+        attachedSong: msg.attachedSong || null,
+        hasImage: !!msg.attachedImage,
+        clientId: msg.id
+      });
+    } catch (e) {
+      console.warn('[AI] Could not persist message:', e);
+    }
+  }, [isAuthenticated]);
 
   // Resolve AI song suggestions → playable tracks
   const resolveTrack = useCallback(async (suggestion) => {
@@ -251,6 +321,7 @@ export const AIChatPage = () => {
     };
 
     setMessages(prev => [...prev, userMsg]);
+    persistMessage(userMsg);
     const history = messages.map(m => ({ role: m.role, content: m.content }));
     const song = attachedSong;
     const image = attachedImage;
@@ -265,10 +336,12 @@ export const AIChatPage = () => {
       const songSuggestions = parseSongSuggestions(aiText);
       const cleanText = stripSongTags(aiText);
 
-      setMessages(prev => [...prev, {
+      const aiMsg = {
         id: `ai_${Date.now()}`, role: 'assistant',
         content: cleanText, songs: songSuggestions, timestamp: Date.now()
-      }]);
+      };
+      setMessages(prev => [...prev, aiMsg]);
+      persistMessage(aiMsg);
       songSuggestions.forEach(s => resolveTrack(s));
     } catch (e) {
       setMessages(prev => [...prev, {
@@ -285,6 +358,39 @@ export const AIChatPage = () => {
     { label: '🌙 Late night chill mix', text: 'Give me a late night chill playlist mix' },
     { label: '🔥 Trending hits', text: 'What are some trending Bangla and Hindi hits right now?' }
   ];
+
+  // Linova AI requires an account: chat history is stored per user, and the
+  // backend rejects /api/ai/* without a valid token.
+  if (!isAuthLoading && !isAuthenticated) {
+    return (
+      <div className="flex flex-col h-full bg-[#0c0e17] rounded-2xl overflow-hidden border border-white/5 items-center justify-center text-center px-6">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-xl mb-5">
+          <Bot className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-extrabold text-white mb-2">Sign in to chat with Linova AI</h2>
+        <p className="text-sm text-gray-400 max-w-sm mb-6">
+          Your conversations are saved to your account, so you can pick up right where you
+          left off. Create a free account or log in to get started.
+        </p>
+        <button
+          onClick={() => openAuthModal('login')}
+          className="px-6 py-3 rounded-full bg-linova-primary text-white font-bold text-sm flex items-center gap-2 shadow-lg hover:scale-105 transition-all"
+        >
+          <Lock className="w-4 h-4" />
+          <span>Log in or sign up</span>
+        </button>
+      </div>
+    );
+  }
+
+  if (isAuthLoading || isHistoryLoading) {
+    return (
+      <div className="flex flex-col h-full bg-[#0c0e17] rounded-2xl overflow-hidden border border-white/5 items-center justify-center">
+        <Loader2 className="w-7 h-7 text-linova-primary animate-spin" />
+        <p className="text-xs text-gray-500 mt-3">Loading your conversation…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-[#0c0e17] rounded-2xl overflow-hidden border border-white/5 relative">

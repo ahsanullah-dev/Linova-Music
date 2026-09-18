@@ -8,7 +8,8 @@ import {
   getProviderPlaylist,
   getRecommendations,
   getProviderStatus,
-  streamAudioTrack
+  streamAudioTrack,
+  getRadio
 } from '../controllers/musicController.js';
 import { optionalAuth } from '../middleware/auth.js';
 import { apiLimiter } from '../middleware/rateLimiter.js';
@@ -24,6 +25,7 @@ router.get('/artists/:id', getArtist);
 router.get('/albums/:id', getAlbum);
 router.get('/playlists/:id', getProviderPlaylist);
 router.get('/recommendations', optionalAuth, getRecommendations);
+router.get('/radio', optionalAuth, getRadio);
 router.get('/status', getProviderStatus);
 router.get('/stream/:id', streamAudioTrack);
 

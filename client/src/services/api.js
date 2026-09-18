@@ -262,6 +262,27 @@ class ApiService {
       body: JSON.stringify({ messages, attachedSong })
     });
   }
+
+  // AI Chat History
+  getAiHistory() {
+    return this.request('/ai/history');
+  }
+
+  addAiMessage(message) {
+    return this.request('/ai/history', {
+      method: 'POST',
+      body: JSON.stringify(message)
+    });
+  }
+
+  clearAiHistory() {
+    return this.request('/ai/history', { method: 'DELETE' });
+  }
+
+  // Radio
+  getRadio() {
+    return this.request('/music/radio');
+  }
 }
 
 export const api = new ApiService();

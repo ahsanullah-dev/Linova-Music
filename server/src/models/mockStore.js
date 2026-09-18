@@ -35,7 +35,8 @@ const mockDb = {
   likedSongs: [],
   savedAlbums: [],
   savedArtists: [],
-  history: []
+  history: [],
+  aiMessages: []
 };
 
 export const mockStore = {
@@ -243,5 +244,32 @@ export const mockStore = {
     };
     mockDb.searches.unshift(item);
     return item;
-  }
+  },
+
+  // AI chat history (persisted for the session lifetime of the process)
+  async getAiMessages(userId) {
+    const uid = (userId || '').toString();
+    if (!mockDb.aiMessages) mockDb.aiMessages = [];
+    return mockDb.aiMessages
+      .filter(m => m.userId.toString() === uid)
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+      .slice(-200);
+  },
+  async addAiMessage(userId, payload) {
+    if (!mockDb.aiMessages) mockDb.aiMessages = [];
+    const item = {
+      _id: `ai_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      ...payload,
+      userId: (userId || '').toString(),
+      createdAt: new Date()
+    };
+    mockDb.aiMessages.push(item);
+    return item;
+  },
+  async clearAiMessages(userId) {
+    const uid = (userId || '').toString();
+    if (!mockDb.aiMessages) mockDb.aiMessages = [];
+    mockDb.aiMessages = mockDb.aiMessages.filter(m => m.userId.toString() !== uid);
+    return true;
+  },
 };

@@ -17,11 +17,27 @@ export const useAuthStore = create((set, get) => ({
     try {
       api.setToken(token);
       const user = await api.getMe();
-      set({ user, isAuthenticated: true, isLoading: false });
+      set({ user, token, isAuthenticated: true, isLoading: false });
     } catch (error) {
-      console.warn('[Auth] Stored session invalid, resetting auth state.');
-      api.setToken(null);
-      set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+      // Only a real rejection of the credential should end the session. A 500,
+      // a 502 from a cold-starting backend, or an offline network blip must NOT
+      // throw away a token that is still perfectly valid - that was the cause
+      // of users being silently logged out.
+      const isAuthRejection =
+        error.status === 401 ||
+        error.code === 'INVALID_TOKEN' ||
+        error.code === 'USER_NOT_FOUND' ||
+        error.code === 'UNAUTHORIZED';
+
+      if (isAuthRejection) {
+        console.warn('[Auth] Stored session rejected by server, signing out.');
+        api.setToken(null);
+        set({ user: null, token: null, isAuthenticated: false, isLoading: false });
+        return;
+      }
+
+      console.warn('[Auth] Could not verify session (transient). Keeping token.', error);
+      set({ isLoading: false });
     }
   },
 

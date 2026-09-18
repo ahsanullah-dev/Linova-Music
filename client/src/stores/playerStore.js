@@ -23,6 +23,11 @@ export const usePlayerStore = create((set, get) => ({
   isQueueOpen: false,
   isNowPlayingPanelOpen: localStorage.getItem('linova_now_playing_panel') !== 'false',
   playbackError: null,
+  // Autoplay radio: keeps playing genre-matched songs when the queue runs out
+  autoplayRadio: localStorage.getItem('linova_autoplay_radio') !== 'false',
+  isLoadingRadio: false,
+  radioGenreLabel: null,
+  playedTrackIds: [],
   lyrics: null,
   isLoadingLyrics: false,
   activeEngine: 'youtube', // 'youtube' | 'native'
@@ -146,7 +151,19 @@ export const usePlayerStore = create((set, get) => ({
       }
     }
 
-    set({ currentTrack: track, position: 0 });
+    set((state) => ({
+      currentTrack: track,
+      position: 0,
+      // Remember what we've played so the radio never serves it back to us.
+      playedTrackIds: [track.id, ...state.playedTrackIds.filter((id) => id !== track.id)].slice(0, 100)
+    }));
+
+    // Warm the radio up before the queue actually runs dry, so the transition
+    // into the next song has no gap.
+    const { queue, currentIndex, autoplayRadio, repeatMode } = get();
+    if (autoplayRadio && repeatMode !== 'all' && queue.length - currentIndex <= 2) {
+      get().extendQueueWithRadio(track);
+    }
 
     if ('mediaSession' in navigator) {
       navigator.mediaSession.metadata = new MediaMetadata({
@@ -286,22 +303,81 @@ export const usePlayerStore = create((set, get) => ({
     set({ repeatMode: nextMode });
   },
 
-  skipNext: () => {
-    const { queue, currentIndex, repeatMode, playTrack } = get();
+  toggleAutoplayRadio: () => {
+    const next = !get().autoplayRadio;
+    localStorage.setItem('linova_autoplay_radio', String(next));
+    set({ autoplayRadio: next });
+  },
+
+  /**
+   * Spotify-style continuation. When the queue runs dry we don't stop - we pull
+   * a genre-matched radio queue seeded from the track that just played, so a
+   * single song opened from search rolls into similar music automatically.
+   */
+  extendQueueWithRadio: async (seedTrack) => {
+    const { queue, autoplayRadio, isLoadingRadio, playedTrackIds } = get();
+    if (!autoplayRadio || isLoadingRadio) return [];
+
+    const seed = seedTrack || get().currentTrack;
+    if (!seed) return [];
+
+    set({ isLoadingRadio: true });
+    try {
+      const exclude = Array.from(
+        new Set([...queue.map((t) => t.id), ...playedTrackIds])
+      ).filter(Boolean);
+
+      const radio = await api.getRadio(seed, exclude, 20);
+      const tracks = (radio?.tracks || []).filter(
+        (t) => t && t.id && !queue.some((q) => q.id === t.id)
+      );
+
+      if (tracks.length > 0) {
+        set((state) => ({
+          queue: [...state.queue, ...tracks],
+          originalQueue: [...state.originalQueue, ...tracks],
+          radioGenreLabel: radio?.genreLabel || null
+        }));
+      }
+
+      return tracks;
+    } catch (error) {
+      console.warn('[Player] Could not load autoplay radio:', error);
+      return [];
+    } finally {
+      set({ isLoadingRadio: false });
+    }
+  },
+
+  skipNext: async () => {
+    const { queue, currentIndex, repeatMode, playTrack, extendQueueWithRadio } = get();
     if (queue.length === 0) return;
 
     let nextIndex = currentIndex + 1;
+
     if (nextIndex >= queue.length) {
       if (repeatMode === 'all') {
         nextIndex = 0;
       } else {
-        set({ isPlaying: false });
-        return;
+        // Try to keep the music going with a genre-matched radio queue before
+        // giving up and stopping playback.
+        const added = await extendQueueWithRadio(queue[currentIndex] || get().currentTrack);
+        if (added.length === 0) {
+          set({ isPlaying: false });
+          return;
+        }
       }
     }
 
+    const nextQueue = get().queue;
+    const nextTrack = nextQueue[nextIndex];
+    if (!nextTrack) {
+      set({ isPlaying: false });
+      return;
+    }
+
     set({ currentIndex: nextIndex });
-    playTrack(queue[nextIndex]);
+    playTrack(nextTrack);
   },
 
   skipPrevious: () => {
