@@ -16,7 +16,11 @@ export const useAuthStore = create((set, get) => ({
 
     try {
       api.setToken(token);
-      const user = await api.getMe();
+      // getMe() resolves the server's { user } envelope, not the user itself -
+      // this was previously stored as-is, so after every refresh `user.name`,
+      // `user.avatar`, `user.createdAt` etc. were all silently undefined
+      // (masked by `user?.x` fallbacks) until the next fresh login/register.
+      const { user } = await api.getMe();
       set({ user, token, isAuthenticated: true, isLoading: false });
     } catch (error) {
       // Only a real rejection of the credential should end the session. A 500,

@@ -2,12 +2,33 @@ import React from 'react';
 import { useAuthStore } from '../../stores/authStore.js';
 import { useOfflineStore } from '../../stores/offlineStore.js';
 import { useAppStore } from '../../stores/appStore.js';
-import { HardDrive, Trash2, Volume2, Shield, User, Palette, Download } from 'lucide-react';
+import { useLibraryStore } from '../../stores/libraryStore.js';
+import { usePlayerStore } from '../../stores/playerStore.js';
+import { HardDrive, Trash2, Volume2, Shield, User, Palette, Download, Calendar, Heart, ListMusic, History, Play } from 'lucide-react';
+
+const timeAgo = (dateStr) => {
+  const diffMs = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+};
+
+const memberSince = (dateStr) => {
+  if (!dateStr) return null;
+  return new Date(dateStr).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+};
 
 export const SettingsPage = () => {
   const { user, isAuthenticated, updateProfile } = useAuthStore();
   const { storageUsage, clearAllDownloads, refreshDownloads } = useOfflineStore();
   const { showToast, openAuthModal, pwaInstallPrompt } = useAppStore();
+  const { likedTracks, playlists, history } = useLibraryStore();
+  const { playTrack } = usePlayerStore();
 
   const handleClearCache = async () => {
     if (window.confirm('Are you sure you want to delete all downloaded offline tracks?')) {
@@ -53,15 +74,41 @@ export const SettingsPage = () => {
         </div>
 
         {isAuthenticated ? (
-          <div className="flex items-center gap-4 pt-2">
-            <img
-              src={user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-              alt={user?.name}
-              className="w-14 h-14 rounded-full object-cover ring-2 ring-linova-primary/40"
-            />
-            <div>
-              <h4 className="font-bold text-white text-base">{user?.name}</h4>
-              <p className="text-xs text-gray-400">{user?.email}</p>
+          <div className="pt-2 space-y-4">
+            <div className="flex items-center gap-4">
+              <img
+                src={user?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
+                alt={user?.name}
+                className="w-14 h-14 rounded-full object-cover ring-2 ring-linova-primary/40"
+              />
+              <div>
+                <h4 className="font-bold text-white text-base">{user?.name}</h4>
+                <p className="text-xs text-gray-400">{user?.email}</p>
+                {memberSince(user?.createdAt) && (
+                  <p className="text-[11px] text-gray-500 flex items-center gap-1 mt-1">
+                    <Calendar className="w-3 h-3" />
+                    <span>Member since {memberSince(user.createdAt)}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3 pt-1">
+              <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-center">
+                <Heart className="w-4 h-4 text-rose-400 mx-auto mb-1" />
+                <div className="text-lg font-extrabold text-white">{likedTracks?.length || 0}</div>
+                <div className="text-[10px] text-gray-500">Liked Songs</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-center">
+                <ListMusic className="w-4 h-4 text-cyan-400 mx-auto mb-1" />
+                <div className="text-lg font-extrabold text-white">{playlists?.length || 0}</div>
+                <div className="text-[10px] text-gray-500">Playlists</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-center">
+                <History className="w-4 h-4 text-emerald-400 mx-auto mb-1" />
+                <div className="text-lg font-extrabold text-white">{history?.length || 0}</div>
+                <div className="text-[10px] text-gray-500">Songs Played</div>
+              </div>
             </div>
           </div>
         ) : (
@@ -79,6 +126,55 @@ export const SettingsPage = () => {
           </div>
         )}
       </section>
+
+      {/* Listening History */}
+      {isAuthenticated && (
+        <section className="glass-card p-6 rounded-3xl space-y-4">
+          <div className="flex items-center gap-3">
+            <History className="w-5 h-5 text-amber-400" />
+            <h3 className="text-base font-bold text-white">Listening History</h3>
+          </div>
+
+          {history && history.length > 0 ? (
+            <div className="space-y-1">
+              {history.slice(0, 15).map((entry, idx) => {
+                const track = entry.track || entry;
+                return (
+                  <button
+                    key={entry._id || `${track.id}_${idx}`}
+                    onClick={() => playTrack(track, history.map(h => h.track || h))}
+                    className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 transition-colors text-left group"
+                  >
+                    <div className="relative w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-white/5">
+                      {track.artwork ? (
+                        <img src={track.artwork} alt={track.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-600">
+                          <History className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                        <Play className="w-4 h-4 text-white fill-white" />
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-white truncate">{track.title}</p>
+                      <p className="text-xs text-gray-400 truncate">{track.artist}</p>
+                    </div>
+                    <span className="text-[11px] text-gray-500 flex-shrink-0">
+                      {timeAgo(entry.playedAt || entry.createdAt)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500 py-2">
+              Nothing played yet — your recently played songs will show up here.
+            </p>
+          )}
+        </section>
+      )}
 
       {/* Offline Storage Management Section */}
       <section className="glass-card p-6 rounded-3xl space-y-4">

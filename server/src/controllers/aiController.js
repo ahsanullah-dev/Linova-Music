@@ -207,19 +207,39 @@ function getFallbackSuggestions(artist, title) {
   ];
 }
 
-// Retry with exponential backoff for 503 overload
+// Retry with exponential backoff for 503 overload.
+//
+// Previously this list was ['gemini-3.6-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'].
+// As of 2026, Gemini 1.5 and the entire 2.0 Flash line (including 2.0-flash-lite) have
+// been permanently shut down and return an immediate 404 - so on any hiccup with the
+// first model, every request burned two guaranteed-dead fallback attempts (each with
+// its own retry-with-backoff loop) before finally giving up. That was the source of
+// both symptoms: normal replies took long stretches to fail over, and a transient 503
+// on the first model made the whole request fail outright far more often than it should.
+//
+// 'gemini-flash-latest' is Google's auto-updating alias to their current best Flash
+// model, so this list self-heals as Google rotates models without needing a redeploy.
+const MODEL_PRIORITY = ['gemini-flash-latest', 'gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-2.5-flash-lite'];
+const REQUEST_TIMEOUT_MS = 12_000; // per attempt - bounds total worst-case latency
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-const MODEL_PRIORITY = ['gemini-3.6-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash'];
 
-async function callWithRetry(ai, systemInstruction, history, parts, retries = 2) {
+async function callWithRetry(ai, systemInstruction, history, parts) {
+  let lastErr;
   for (const modelName of MODEL_PRIORITY) {
+    // Only the primary model gets a retry on a transient error - it's the one
+    // most likely to be temporarily overloaded. Fallbacks get one shot each so
+    // a bad run can't compound into a minute-plus wait.
+    const retries = modelName === MODEL_PRIORITY[0] ? 1 : 0;
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const model = ai.getGenerativeModel({
-          model: modelName,
-          systemInstruction,
-          generationConfig: { temperature: 0.9, maxOutputTokens: 900 }
-        });
+        const model = ai.getGenerativeModel(
+          {
+            model: modelName,
+            systemInstruction,
+            generationConfig: { temperature: 0.9, maxOutputTokens: 900 }
+          },
+          { timeout: REQUEST_TIMEOUT_MS }
+        );
         let result;
         const hasImage = parts.some(p => p.inlineData);
         if (hasImage && history.length === 0) {
@@ -230,18 +250,20 @@ async function callWithRetry(ai, systemInstruction, history, parts, retries = 2)
         }
         return { text: result.response.text(), model: modelName };
       } catch (err) {
+        lastErr = err;
         const is503 = err.status === 503 || err.message?.includes('503') || err.message?.includes('high demand');
         const is404 = err.status === 404 || err.message?.includes('404') || err.message?.includes('no longer available');
-        if (is404) break; // this model is gone, try next
-        if (is503 && attempt < retries) {
-          await sleep(1500 * (attempt + 1)); // 1.5s, 3s
+        const isTimeout = err.name === 'AbortError' || err.message?.includes('timeout') || err.message?.includes('aborted');
+        if (is404) break; // this model is gone from Google's side, move to the next one immediately
+        if ((is503 || isTimeout) && attempt < retries) {
+          await sleep(1000 * (attempt + 1)); // 1s, then give up on this model
           continue;
         }
-        throw err; // non-retryable error
+        break; // any other error (or retries exhausted): try the next model rather than throw immediately
       }
     }
   }
-  throw new Error('All Gemini models unavailable');
+  throw lastErr || new Error('All Gemini models unavailable');
 }
 
 // Main controller

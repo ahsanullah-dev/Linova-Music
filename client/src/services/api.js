@@ -24,20 +24,28 @@ class ApiService {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    // The API is proxied to a Render free-tier service, which sleeps after
-    // ~15 minutes of inactivity. The first request after a sleep can take
-    // 30-60s to cold start and often comes back as a 502/503/504 gateway
-    // page (HTML, not JSON). Retry those with backoff instead of surfacing
-    // an unhelpful "Unexpected token <" JSON parse error to the user.
+    // /ai/chat already retries across multiple models server-side (worst case
+    // ~60s). Wrapping that in this generic retry-on-network-error loop as well
+    // was compounding the two: a slow Gemini response looked like a dropped
+    // connection, so the client retried the whole multi-model chain up to 3
+    // more times - turning an already-slow reply into a multi-minute one, or
+    // into "no response" if the browser's own fetch timeout hit first. Give
+    // /ai/chat a single long-lived attempt with its own timeout instead.
+    const isSlowAiCall = endpoint.startsWith('/ai/chat');
+    const timeoutMs = isSlowAiCall ? 70_000 : 20_000;
+
     const COLD_START_STATUSES = [502, 503, 504, 522, 524];
-    const MAX_ATTEMPTS = 3;
+    const MAX_ATTEMPTS = isSlowAiCall ? 1 : 3;
     let lastError;
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
         const response = await fetch(`${BASE_URL}${endpoint}`, {
           ...options,
-          headers
+          headers,
+          signal: controller.signal
         });
 
         if (!response.ok && COLD_START_STATUSES.includes(response.status)) {
@@ -71,6 +79,13 @@ class ApiService {
 
         return data.data !== undefined ? data.data : data;
       } catch (error) {
+        if (error.name === 'AbortError') {
+          error.message = isSlowAiCall
+            ? "Linova AI didn't respond in time. Please try again."
+            : 'Request timed out. Please check your connection and try again.';
+          error.code = 'TIMEOUT';
+        }
+
         lastError = error;
 
         const isRetryable =
@@ -88,6 +103,8 @@ class ApiService {
           `[API Retry] ${endpoint} failed (${error.code || error.name}); retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_ATTEMPTS})`
         );
         await new Promise((resolve) => setTimeout(resolve, delayMs));
+      } finally {
+        clearTimeout(timer);
       }
     }
 
@@ -256,12 +273,16 @@ class ApiService {
   }
 
   // AI Music Chat
- chatAI(messages, attachedSong = null, attachedImage = null) {
-  return this.request('/ai/chat', {
-    method: 'POST',
-    body: JSON.stringify({ messages, attachedSong, attachedImage })
-  });
-}
+  // NOTE: signature is (messages, { attachedSong, attachedImage }) - previously
+  // this took two positional args while the only call site passed an options
+  // object as the second one, so attachedSong was serialized as the wrong shape
+  // and attachedImage was silently sent as undefined every time.
+  chatAI(messages, { attachedSong = null, attachedImage = null } = {}) {
+    return this.request('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ messages, attachedSong, attachedImage })
+    });
+  }
 
   // AI Chat History
   getAiHistory() {

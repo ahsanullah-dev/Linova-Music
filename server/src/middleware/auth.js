@@ -24,7 +24,12 @@ export const protect = async (req, res, next) => {
 
     let user;
     if (dbStatus.isMockMode) {
-      user = await mockStore.findUserById(decoded.id);
+      const rawUser = await mockStore.findUserById(decoded.id);
+      // mockStore returns the raw stored record, which includes passwordHash.
+      // The Mongoose path already excludes it via .select('-passwordHash') -
+      // mirror that here so a mock-mode /auth/me response never leaks the
+      // bcrypt hash back to the client as plain JSON.
+      user = rawUser ? { ...rawUser, passwordHash: undefined } : null;
     } else {
       user = await User.findById(decoded.id).select('-passwordHash');
     }

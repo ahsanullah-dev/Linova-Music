@@ -352,9 +352,12 @@ export const AIChatPage = () => {
       persistMessage(aiMsg);
       songSuggestions.forEach(s => resolveTrack(s));
     } catch (e) {
+      const reason = e?.code === 'TIMEOUT'
+        ? "That took too long to answer — try again?"
+        : "I'm having a moment — please try again! 🎵";
       setMessages(prev => [...prev, {
         id: `err_${Date.now()}`, role: 'assistant',
-        content: "I'm having a moment — please try again! 🎵",
+        content: reason,
         songs: [], timestamp: Date.now()
       }]);
     } finally { setIsLoading(false); }
