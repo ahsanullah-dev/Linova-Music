@@ -1,26 +1,27 @@
 import mongoose from 'mongoose';
 import { ENV } from './env.js';
 
-let isConnected = false;
-let isMockMode = false;
-
 export const connectDB = async () => {
   try {
+    if (!ENV.MONGODB_URI) {
+      throw new Error('MONGODB_URI is not configured');
+    }
+
     const conn = await mongoose.connect(ENV.MONGODB_URI, {
-      serverSelectionTimeoutMS: 2000
+      serverSelectionTimeoutMS: 10000
     });
-    isConnected = true;
-    isMockMode = false;
-    console.log(`[DB] MongoDB Connected successfully: ${conn.connection.host}`);
+
+    console.log(
+      `[DB] MongoDB Connected successfully: ${conn.connection.host}`
+    );
   } catch (error) {
-    console.warn(`[DB] MongoDB connection failed (${error.message}). Activating In-Memory Datastore fallback for smooth standalone operation.`);
-    isConnected = true;
-    isMockMode = true;
+    console.error(`[DB] MongoDB connection failed: ${error.message}`);
+    process.exit(1);
   }
 };
 
 export const getDBStatus = () => ({
-  connected: isConnected,
-  isMockMode: isMockMode,
-  uri: isMockMode ? 'in-memory-fallback' : ENV.MONGODB_URI
+  connected: mongoose.connection.readyState === 1,
+  isMockMode: false,
+  uri: 'configured'
 });
