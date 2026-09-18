@@ -256,12 +256,12 @@ class ApiService {
   }
 
   // AI Music Chat
-  chatAI(messages, attachedSong = null) {
-    return this.request('/ai/chat', {
-      method: 'POST',
-      body: JSON.stringify({ messages, attachedSong })
-    });
-  }
+ chatAI(messages, attachedSong = null, attachedImage = null) {
+  return this.request('/ai/chat', {
+    method: 'POST',
+    body: JSON.stringify({ messages, attachedSong, attachedImage })
+  });
+}
 
   // AI Chat History
   getAiHistory() {

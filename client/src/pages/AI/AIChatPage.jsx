@@ -155,16 +155,24 @@ const AttachMenu = ({ onPickSong, onPickImage, onClose }) => {
 async function callBackendAI(history, userMessage, attachedSong = null, attachedImage = null) {
   const messages = [
     ...history,
-    { role: 'user', content: userMessage || (attachedSong ? 'Tell me about this song and suggest similar ones.' : attachedImage ? 'Analyze this image and suggest music that matches its mood or vibe.' : '') }
+    {
+      role: 'user',
+      content:
+        userMessage ||
+        (attachedSong
+          ? 'Tell me about this song and suggest similar ones.'
+          : attachedImage
+            ? 'Analyze this image and suggest music that matches its mood or vibe.'
+            : '')
+    }
   ];
-  const res = await fetch('/api/ai/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, attachedSong, attachedImage })
+
+  const data = await api.chatAI(messages, {
+    attachedSong,
+    attachedImage
   });
-  if (!res.ok) throw new Error(`AI API error: ${res.status}`);
-  const data = await res.json();
-  return (data.data?.text ?? data.text) || "I couldn't generate a response right now.";
+
+  return (data?.text ?? data) || "I couldn't generate a response right now.";
 }
 
 function parseSongSuggestions(text) {
