@@ -152,7 +152,7 @@ export class YouTubeMusicProvider extends MusicProvider {
 
   async getHomeSections(userId, category = 'all') {
     const cacheKey = category || 'all';
-    if (this._homeCache.has(cacheKey) && Date.now() - (this._homeCacheTime.get(cacheKey) || 0) < 1800000) {
+    if (this._homeCache.has(cacheKey) && Date.now() - (this._homeCacheTime.get(cacheKey) || 0) < 600000) {
       return this._homeCache.get(cacheKey);
     }
 
@@ -190,12 +190,17 @@ export class YouTubeMusicProvider extends MusicProvider {
           { id: 'rnb-vibes', title: '💫 Smooth R&B & Soul', subtitle: 'Velvet vocals and late night grooves', q: 'smooth rnb soul songs' }
         ];
       } else {
-        // Default 'all'
+        // Default 'all' - previously only 4 shelves here, which combined with
+        // a single-genre personalized shelf made the whole feed feel thin.
+        // Rounding out to 6 covers more of what a first-time or logged-out
+        // visitor might actually be into.
         querySets = [
           { id: 'trending-hits', title: '🔥 Trending Global Chartbusters', subtitle: 'The hottest tracks viral right now across the globe', q: 'trending top hits 2026' },
           { id: 'bangla-rock-hits', title: '🎸 Bangla Rock Bands & Underground', subtitle: 'Artcell, Warfaze, LRB, Miles, Meghdol, Aurthohin & more', q: 'bangla rock band hits' },
           { id: 'hot100-hits', title: '🌟 Global Billboard Top Hits', subtitle: 'Top-charting tracks breaking worldwide records', q: 'global hot 100 billboard' },
-          { id: 'acoustic-melodic', title: '🍃 Acoustic & Late Night Chill', subtitle: 'Mellow melodies and soulful acoustic songs', q: 'acoustic melodic songs' }
+          { id: 'acoustic-melodic', title: '🍃 Acoustic & Late Night Chill', subtitle: 'Mellow melodies and soulful acoustic songs', q: 'acoustic melodic songs' },
+          { id: 'hiphop-trending', title: '🎤 Hip-Hop & Rap Heavyweights', subtitle: 'Fresh bars, trap beats, and global hip-hop anthems', q: 'hip hop hits 2026' },
+          { id: 'dance-edm', title: '🎧 Electronic & Dance Anthems', subtitle: 'High energy beats and electronic drops', q: 'dance electronic hits' }
         ];
       }
 
@@ -207,7 +212,7 @@ export class YouTubeMusicProvider extends MusicProvider {
       results.forEach((res, idx) => {
         const meta = querySets[idx];
         const songs = (res.status === 'fulfilled' ? res.value : [])
-          .slice(0, 15)
+          .slice(0, 20)
           .map(t => this.normalizeTrack(t))
           .filter(Boolean);
 

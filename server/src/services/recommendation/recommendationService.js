@@ -4,6 +4,7 @@ import { mockStore } from '../../models/mockStore.js';
 import { ListeningHistory } from '../../models/ListeningHistory.js';
 import { LikedSong } from '../../models/LikedSong.js';
 import { GENRE_CLUSTERS } from './genreClusters.js';
+import { buildRadioQueue } from './radioService.js';
 
 
 /**
@@ -83,6 +84,12 @@ export const generateRecommendations = async (userId = 'guest_session', category
     .map(e => e[0]);
 
   const topGenreKey = rankedGenres[0] || (category === 'bangla' ? 'bangla_rock' : null);
+  // Previously only the single #1 genre ever got a shelf, so as soon as one
+  // genre pulled slightly ahead, every other genre the user actually listens
+  // to vanished from the feed entirely - that's a big part of why the feed
+  // felt static. Blending the top 2 keeps the feed reflecting a wider slice
+  // of what someone actually plays.
+  const secondaryGenreKey = rankedGenres[1] || null;
   const ytmProvider = providerManager.getProvider('youtube-music');
 
   const sections = [];
@@ -109,19 +116,68 @@ export const generateRecommendations = async (userId = 'guest_session', category
     }
   }
 
-  // 2. Genre-Personalized Daily Mix Shelves
-  if (topGenreKey && GENRE_CLUSTERS[topGenreKey]) {
-    const topCluster = GENRE_CLUSTERS[topGenreKey];
-    const shelfQueries = topCluster.shelves;
+  // 1b. "Because you listened to <Artist>" - reuses the same genre-matched
+  // radio builder that powers autoplay, seeded from the user's most-played
+  // and most-liked artists. This is the part that actually moves as
+  // listening history grows, rather than only reshuffling within a fixed
+  // genre's static shelf queries.
+  const artistPlayCounts = new Map();
+  recentHistory.forEach(h => {
+    const a = (h.track || h)?.artist;
+    if (a) artistPlayCounts.set(a, (artistPlayCounts.get(a) || 0) + 1);
+  });
+  likedSongs.forEach(l => {
+    const a = (l.track || l)?.artist;
+    if (a) artistPlayCounts.set(a, (artistPlayCounts.get(a) || 0) + 2); // liked counts extra
+  });
+
+  const topArtistNames = Array.from(artistPlayCounts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([name]) => name)
+    .slice(0, 2);
+
+  if (topArtistNames.length > 0) {
+    const seedTracksByArtist = topArtistNames.map(name => {
+      const fromHistory = recentHistory.find(h => (h.track || h)?.artist === name);
+      const fromLiked = likedSongs.find(l => (l.track || l)?.artist === name);
+      return (fromHistory?.track || fromHistory) || (fromLiked?.track || fromLiked) || { artist: name };
+    });
+
+    const radioResults = await Promise.allSettled(
+      seedTracksByArtist.map(seed => buildRadioQueue(seed, [], 15))
+    );
+
+    radioResults.forEach((res, idx) => {
+      if (res.status !== 'fulfilled') return;
+      const artistName = topArtistNames[idx];
+      const tracks = res.value?.tracks || [];
+      if (tracks.length > 0) {
+        sections.push({
+          id: `because-you-listened-${artistName.toLowerCase().replace(/\s+/g, '-')}`,
+          title: `Because you listened to ${artistName}`,
+          subtitle: `More tracks in the same vein as ${artistName}`,
+          type: 'tracks',
+          items: tracks
+        });
+      }
+    });
+  }
+
+  // 2. Genre-Personalized Daily Mix Shelves - blends the top 2 detected
+  // genres so the feed reflects more than just whichever genre is narrowly
+  // in first place.
+  for (const genreKey of [topGenreKey, secondaryGenreKey].filter(Boolean)) {
+    const cluster = GENRE_CLUSTERS[genreKey];
+    if (!cluster) continue;
 
     const shelfResults = await Promise.allSettled(
-      shelfQueries.map(sq => ytmProvider.search(sq.q, 'songs'))
+      cluster.shelves.map(sq => ytmProvider.search(sq.q, 'songs'))
     );
 
     shelfResults.forEach((res, idx) => {
-      const sq = shelfQueries[idx];
-      const tracks = (res.status === 'fulfilled' ? res.value.tracks : []).slice(0, 15);
-      if (tracks.length > 0) {
+      const sq = cluster.shelves[idx];
+      const tracks = (res.status === 'fulfilled' ? res.value.tracks : []).slice(0, 20);
+      if (tracks.length > 0 && !sections.some(s => s.id === sq.id)) {
         sections.push({
           id: sq.id,
           title: sq.title,

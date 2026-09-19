@@ -1,10 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, Search, Library, ArrowDownToLine, Settings } from 'lucide-react';
+import { Home, Search, Bot, Library, Settings } from 'lucide-react';
 
 export const MobileNav = () => {
   const linkClass = ({ isActive }) =>
-    `flex flex-col items-center justify-center py-2 px-3 text-[11px] font-medium transition-colors ${
+    `flex flex-col items-center justify-center py-2 px-2 text-[10px] font-medium transition-colors ${
       isActive ? 'text-linova-primary' : 'text-gray-400 hover:text-gray-200'
     }`;
 
@@ -18,13 +18,15 @@ export const MobileNav = () => {
         <Search className="w-5 h-5 mb-1" />
         <span>Search</span>
       </NavLink>
+      {/* AI DJ - on desktop this lives in TopBar (hidden below the lg breakpoint),
+          so phones had no way to reach it at all. This is the fix. */}
+      <NavLink to="/ai" className={linkClass}>
+        <Bot className="w-5 h-5 mb-1" />
+        <span>AI DJ</span>
+      </NavLink>
       <NavLink to="/library" className={linkClass}>
         <Library className="w-5 h-5 mb-1" />
         <span>Library</span>
-      </NavLink>
-      <NavLink to="/library?tab=downloaded" className={linkClass}>
-        <ArrowDownToLine className="w-5 h-5 mb-1" />
-        <span>Offline</span>
       </NavLink>
       <NavLink to="/settings" className={linkClass}>
         <Settings className="w-5 h-5 mb-1" />
