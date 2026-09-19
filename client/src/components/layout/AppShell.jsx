@@ -39,11 +39,18 @@ export const AppShell = () => {
   const location = useLocation();
   const isAIPage = location.pathname === '/ai';
 
+  // One-time bootstrap. This MUST NOT depend on player position: `position`
+  // ticks ~10x/second during playback, and when it was in the dependency array
+  // this effect re-ran on every tick, re-firing initAuth() and a full library
+  // refetch each time. That flooded the API and any single failed /auth/me in
+  // the storm would clear the stored token and log the user out.
   useEffect(() => {
     initAuth().then(() => fetchLibraryData());
     initOffline();
     initPlayer();
+  }, []);
 
+  useEffect(() => {
     // Listen for PWA BeforeInstallPromptEvent
     const handleBeforeInstall = (e) => {
       e.preventDefault();
@@ -119,7 +126,7 @@ export const AppShell = () => {
 
         {/* Scrollable Viewport */}
         <main className={`flex-1 min-h-0 ${isAIPage ? `overflow-hidden p-3 ${currentTrack ? 'pb-24 md:pb-28' : 'pb-20 md:pb-3'}` : `overflow-y-auto px-4 sm:px-8 py-6 ${currentTrack ? 'pb-28 md:pb-28' : 'pb-20 md:pb-6'}`}`}>
-          {isLyricsOpen && currentTrack ? (
+          {isLyricsOpen && currentTrack && !isAIPage ? (
             <MiddleLyricsView />
           ) : (
             <Outlet />

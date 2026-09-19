@@ -116,10 +116,11 @@ export const TopBar = () => {
           <span>Install App</span>
         </button>
 
-        {/* Notifications & Social */}
+        {/* Notifications & Social - decorative on mobile (crowds the search bar
+            on narrow screens with no real functionality behind them yet) */}
         <button
           onClick={() => showToast('No new notifications', 'info')}
-          className="w-9 h-9 rounded-full bg-black/40 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+          className="hidden sm:flex w-9 h-9 rounded-full bg-black/40 hover:bg-white/10 items-center justify-center text-gray-400 hover:text-white transition-colors"
           title="Notifications"
         >
           <Bell className="w-4 h-4" />
@@ -127,7 +128,7 @@ export const TopBar = () => {
 
         <button
           onClick={() => showToast('Friend Activity is active', 'info')}
-          className="w-9 h-9 rounded-full bg-black/40 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+          className="hidden sm:flex w-9 h-9 rounded-full bg-black/40 hover:bg-white/10 items-center justify-center text-gray-400 hover:text-white transition-colors"
           title="Friend Activity"
         >
           <Users className="w-4 h-4" />
