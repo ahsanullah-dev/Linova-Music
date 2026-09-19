@@ -136,18 +136,51 @@ export const generateRecommendations = async (userId = 'guest_session', category
     .map(([name]) => name)
     .slice(0, 2);
 
-  if (topArtistNames.length > 0) {
+  const radioResultsPromise = topArtistNames.length > 0 ? (async () => {
     const seedTracksByArtist = topArtistNames.map(name => {
       const fromHistory = recentHistory.find(h => (h.track || h)?.artist === name);
       const fromLiked = likedSongs.find(l => (l.track || l)?.artist === name);
       return (fromHistory?.track || fromHistory) || (fromLiked?.track || fromLiked) || { artist: name };
     });
 
-    const radioResults = await Promise.allSettled(
+    return Promise.allSettled(
       seedTracksByArtist.map(seed => buildRadioQueue(seed, [], 15))
     );
+  })() : Promise.resolve([]);
 
-    radioResults.forEach((res, idx) => {
+  const genreSectionsPromise = Promise.all(
+    [topGenreKey, secondaryGenreKey]
+      .filter(Boolean)
+      .map(async genreKey => {
+        const cluster = GENRE_CLUSTERS[genreKey];
+        if (!cluster) return [];
+
+        const shelfResults = await Promise.allSettled(
+          cluster.shelves.map(sq => ytmProvider.search(sq.q, 'songs'))
+        );
+
+        return shelfResults.map((res, idx) => {
+          const sq = cluster.shelves[idx];
+          const tracks = (res.status === 'fulfilled' ? res.value.tracks : []).slice(0, 30);
+          return tracks.length > 0 ? {
+            id: sq.id,
+            title: sq.title,
+            subtitle: sq.subtitle,
+            type: 'tracks',
+            items: tracks
+          } : null;
+        }).filter(Boolean);
+      })
+  ).then(results => results.flat());
+
+  const exploreFeedPromise = ytmProvider.getHomeSections(uid, category);
+  const [radioResults, genreSections, exploreFeed] = await Promise.all([
+    radioResultsPromise,
+    genreSectionsPromise,
+    exploreFeedPromise
+  ]);
+
+  radioResults.forEach((res, idx) => {
       if (res.status !== 'fulfilled') return;
       const artistName = topArtistNames[idx];
       const tracks = res.value?.tracks || [];
@@ -161,36 +194,14 @@ export const generateRecommendations = async (userId = 'guest_session', category
         });
       }
     });
-  }
 
-  // 2. Genre-Personalized Daily Mix Shelves - blends the top 2 detected
-  // genres so the feed reflects more than just whichever genre is narrowly
-  // in first place.
-  for (const genreKey of [topGenreKey, secondaryGenreKey].filter(Boolean)) {
-    const cluster = GENRE_CLUSTERS[genreKey];
-    if (!cluster) continue;
+  genreSections.forEach(section => {
+    if (!sections.some(existing => existing.id === section.id)) {
+      sections.push(section);
+    }
+  });
 
-    const shelfResults = await Promise.allSettled(
-      cluster.shelves.map(sq => ytmProvider.search(sq.q, 'songs'))
-    );
-
-    shelfResults.forEach((res, idx) => {
-      const sq = cluster.shelves[idx];
-      const tracks = (res.status === 'fulfilled' ? res.value.tracks : []).slice(0, 30);
-      if (tracks.length > 0 && !sections.some(s => s.id === sq.id)) {
-        sections.push({
-          id: sq.id,
-          title: sq.title,
-          subtitle: sq.subtitle,
-          type: 'tracks',
-          items: tracks
-        });
-      }
-    });
-  }
-
-  // 3. Add dynamic discovery feed (Trending, Rock, Acoustic) from provider
-  const exploreFeed = await ytmProvider.getHomeSections(uid, category);
+  // Add dynamic discovery feed (Trending, Rock, Acoustic) from provider.
   if (exploreFeed?.sections?.length > 0) {
     exploreFeed.sections.forEach(sec => {
       if (!sections.some(s => s.id === sec.id)) {

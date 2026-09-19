@@ -45,7 +45,11 @@ export const AppShell = () => {
   // refetch each time. That flooded the API and any single failed /auth/me in
   // the storm would clear the stored token and log the user out.
   useEffect(() => {
-    initAuth().then(() => fetchLibraryData());
+    initAuth().then(() => {
+      if (useAuthStore.getState().isAuthenticated) {
+        fetchLibraryData();
+      }
+    });
     initOffline();
     initPlayer();
   }, []);
