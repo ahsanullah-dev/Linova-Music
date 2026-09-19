@@ -22,7 +22,7 @@ CRITICAL RULE — When you suggest songs, ALWAYS embed them as structured JSON i
 {"title": "EXACT_SONG_TITLE", "artist": "EXACT_ARTIST_NAME", "query": "best search query to find this song"}
 </song_suggestion>
 
-You can include 1-5 song suggestions per response. Never list a song suggestion as plain text — always use the XML tag format so the user can play it directly.
+When the user asks for a specific number of songs, return exactly that many song suggestions (for example, if they ask for 20, return 20). Do not cap the response at 5. If no number is requested, choose a useful number of suggestions. Never list a song suggestion as plain text — always use the XML tag format so the user can play it directly.
 
 Keep responses concise (3-6 sentences), warm, and music-focused. Never mention YouTube, ytmusic, or any external service names. Do not reveal you are built on Gemini or any Google product — you are simply "Linova AI".`;
 
@@ -34,9 +34,53 @@ const getGenAI = () => {
 };
 
 
+const FALLBACK_SONG_POOL = [
+  { title: 'Oniket Prantor', artist: 'Artcell', query: 'Oniket Prantor Artcell' },
+  { title: 'Shei Tumi', artist: 'Aurthohin', query: 'Shei Tumi Aurthohin' },
+  { title: 'Bahana', artist: 'Warfaze', query: 'Bahana Warfaze' },
+  { title: 'Prank', artist: 'Nemesis', query: 'Prank Nemesis Bangladesh' },
+  { title: 'Chords of Life', artist: 'Artcell', query: 'Chords of Life Artcell' },
+  { title: 'Tum Hi Ho', artist: 'Arijit Singh', query: 'Tum Hi Ho Arijit Singh' },
+  { title: 'Kun Faya Kun', artist: 'AR Rahman', query: 'Kun Faya Kun AR Rahman Rockstar' },
+  { title: 'Kesariya', artist: 'Arijit Singh', query: 'Kesariya Arijit Singh Brahmastra' },
+  { title: 'Tera Hona', artist: 'Atif Aslam', query: 'Tera Hona Atif Aslam' },
+  { title: 'The Scientist', artist: 'Coldplay', query: 'The Scientist Coldplay' },
+  { title: 'Yellow', artist: 'Coldplay', query: 'Yellow Coldplay Parachute' },
+  { title: 'Numb', artist: 'Linkin Park', query: 'Numb Linkin Park Meteora' },
+  { title: 'Shape of You', artist: 'Ed Sheeran', query: 'Shape of You Ed Sheeran' },
+  { title: 'Blinding Lights', artist: 'The Weeknd', query: 'Blinding Lights The Weeknd' },
+  { title: 'Believer', artist: 'Imagine Dragons', query: 'Believer Imagine Dragons' },
+  { title: 'Fix You', artist: 'Coldplay', query: 'Fix You Coldplay X&Y' },
+  { title: 'Perfect', artist: 'Ed Sheeran', query: 'Perfect Ed Sheeran' },
+  { title: 'Someone Like You', artist: 'Adele', query: 'Someone Like You Adele' },
+  { title: 'Bohemian Rhapsody', artist: 'Queen', query: 'Bohemian Rhapsody Queen' },
+  { title: 'Hotel California', artist: 'Eagles', query: 'Hotel California Eagles' },
+  { title: 'Sweet Child O Mine', artist: 'Guns N Roses', query: 'Sweet Child O Mine Guns N Roses' },
+  { title: 'Smells Like Teen Spirit', artist: 'Nirvana', query: 'Smells Like Teen Spirit Nirvana' },
+  { title: 'Take On Me', artist: 'a-ha', query: 'Take On Me a-ha' },
+  { title: 'Viva La Vida', artist: 'Coldplay', query: 'Viva La Vida Coldplay' }
+];
+
+const requestedSuggestionCount = (message) => {
+  const match = message.match(/\b(\d{1,3})\b/);
+  return match ? Math.max(1, Math.min(Number(match[1]), 100)) : null;
+};
+
+const formatFallbackSuggestions = (songs) =>
+  songs.map(s => `<song_suggestion>\n${JSON.stringify(s)}\n</song_suggestion>`).join('\n\n');
+
 // --- Offline smart fallback engine ---
 function generateFallbackResponse(userMessage, attachedSong) {
   const msg = userMessage.toLowerCase();
+  const requestedCount = requestedSuggestionCount(msg);
+
+  if (requestedCount) {
+    const songs = Array.from(
+      { length: requestedCount },
+      (_, index) => FALLBACK_SONG_POOL[index % FALLBACK_SONG_POOL.length]
+    );
+    return `Here are ${songs.length} handpicked tracks for you:\n\n${formatFallbackSuggestions(songs)}`;
+  }
 
   if (attachedSong) {
     const suggestions = getFallbackSuggestions(attachedSong.artist, attachedSong.title);
@@ -236,7 +280,7 @@ async function callWithRetry(ai, systemInstruction, history, parts) {
           {
             model: modelName,
             systemInstruction,
-            generationConfig: { temperature: 0.9, maxOutputTokens: 900 }
+            generationConfig: { temperature: 0.9, maxOutputTokens: 3000 }
           },
           { timeout: REQUEST_TIMEOUT_MS }
         );

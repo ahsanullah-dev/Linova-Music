@@ -166,28 +166,38 @@ export class YouTubeMusicProvider extends MusicProvider {
           { id: 'bangla-rock', title: '🎸 Bangla Rock Band Hits', subtitle: 'Artcell, Warfaze, LRB, Miles, Meghdol, Aurthohin & Shironamhin', q: 'bangla rock band songs' },
           { id: 'bangla-trending', title: '🔥 Trending Bengali Hits', subtitle: 'Top trending Bangladeshi and Bengali songs', q: 'bangla trending songs 2026' },
           { id: 'bangla-acoustic', title: '🍃 Bangla Acoustic & Indie', subtitle: 'Heartfelt acoustic melodies and soulful indie tracks', q: 'bangla acoustic indie songs' },
-          { id: 'bangla-golden', title: '✨ Bangla Classic & Evergreen Hits', subtitle: 'Timeless masterpieces from legendary bands and artists', q: 'bangla evergreen classic songs' }
+          { id: 'bangla-golden', title: '✨ Bangla Classic & Evergreen Hits', subtitle: 'Timeless masterpieces from legendary bands and artists', q: 'bangla evergreen classic songs' },
+          { id: 'bangla-love', title: '💜 Bengali Love Songs', subtitle: 'Romantic songs from modern Bengali artists', q: 'best bengali romantic songs' },
+          { id: 'bangla-new', title: '🌱 New Bengali Releases', subtitle: 'Fresh songs and rising voices to discover', q: 'new bengali songs 2026' }
         ];
       } else if (category === 'rock') {
         querySets = [
           { id: 'rock-anthems', title: '🎸 Legendary Rock Anthems', subtitle: 'Powerful guitar riffs and electrifying band classics', q: 'rock band anthems' },
           { id: 'alt-rock', title: '⚡ Alternative & Modern Rock', subtitle: 'The biggest alt-rock tracks and energetic hits', q: 'alternative rock hits' },
-          { id: 'metal-hits', title: '🔥 Heavy Metal & Hard Rock', subtitle: 'Raw energy, heavy breakdowns, and iconic vocals', q: 'heavy metal band hits' }
+          { id: 'metal-hits', title: '🔥 Heavy Metal & Hard Rock', subtitle: 'Raw energy, heavy breakdowns, and iconic vocals', q: 'heavy metal band hits' },
+          { id: 'indie-rock', title: '🌌 Indie Rock Discoveries', subtitle: 'Critically loved and under-the-radar guitar music', q: 'best indie rock songs' },
+          { id: 'classic-rock', title: '📻 Classic Rock Essentials', subtitle: 'Timeless records from rock history', q: 'classic rock greatest songs' }
         ];
       } else if (category === 'pop') {
         querySets = [
           { id: 'pop-global', title: '✨ Global Pop Chartbusters', subtitle: 'The biggest pop records dominating charts worldwide', q: 'global pop hits 2026' },
-          { id: 'dance-edm', title: '🎧 Electronic & Dance Anthems', subtitle: 'High energy beats and electronic drops', q: 'dance electronic hits' }
+          { id: 'dance-edm', title: '🎧 Electronic & Dance Anthems', subtitle: 'High energy beats and electronic drops', q: 'dance electronic hits' },
+          { id: 'pop-love', title: '💖 Pop Love Songs', subtitle: 'Romantic pop songs for every mood', q: 'best pop love songs' },
+          { id: 'pop-discovery', title: '🌟 Pop Discoveries', subtitle: 'Fresh voices and songs worth replaying', q: 'new pop songs 2026' }
         ];
       } else if (category === 'chill') {
         querySets = [
           { id: 'chill-acoustic', title: '☕ Acoustic & Coffee House', subtitle: 'Unplugged sessions and soothing acoustic guitars', q: 'acoustic chill songs' },
-          { id: 'lofi-study', title: '🌙 Lofi & Atmospheric Beats', subtitle: 'Calm rhythms for focus, relaxation, and late nights', q: 'lofi chill beats' }
+          { id: 'lofi-study', title: '🌙 Lofi & Atmospheric Beats', subtitle: 'Calm rhythms for focus, relaxation, and late nights', q: 'lofi chill beats' },
+          { id: 'chill-pop', title: '🌊 Mellow Pop & R&B', subtitle: 'Smooth vocals and relaxed grooves', q: 'mellow pop rnb songs' },
+          { id: 'jazz-lounge', title: '🍷 Jazz & Lounge Evenings', subtitle: 'Warm, sophisticated sounds for slow evenings', q: 'jazz lounge chill songs' }
         ];
       } else if (category === 'hiphop') {
         querySets = [
           { id: 'hiphop-trending', title: '🎤 Hip-Hop & Rap Heavyweights', subtitle: 'Fresh bars, trap beats, and global hip-hop anthems', q: 'hip hop hits 2026' },
-          { id: 'rnb-vibes', title: '💫 Smooth R&B & Soul', subtitle: 'Velvet vocals and late night grooves', q: 'smooth rnb soul songs' }
+          { id: 'rnb-vibes', title: '💫 Smooth R&B & Soul', subtitle: 'Velvet vocals and late night grooves', q: 'smooth rnb soul songs' },
+          { id: 'rap-discovery', title: '🚀 Rap Discoveries', subtitle: 'Fresh flows and rising hip-hop artists', q: 'new rap songs 2026' },
+          { id: 'hiphop-classics', title: '🏆 Hip-Hop Classics', subtitle: 'Influential records that shaped the culture', q: 'greatest hip hop songs' }
         ];
       } else {
         // Default 'all' - previously only 4 shelves here, which combined with
@@ -200,7 +210,11 @@ export class YouTubeMusicProvider extends MusicProvider {
           { id: 'hot100-hits', title: '🌟 Global Billboard Top Hits', subtitle: 'Top-charting tracks breaking worldwide records', q: 'global hot 100 billboard' },
           { id: 'acoustic-melodic', title: '🍃 Acoustic & Late Night Chill', subtitle: 'Mellow melodies and soulful acoustic songs', q: 'acoustic melodic songs' },
           { id: 'hiphop-trending', title: '🎤 Hip-Hop & Rap Heavyweights', subtitle: 'Fresh bars, trap beats, and global hip-hop anthems', q: 'hip hop hits 2026' },
-          { id: 'dance-edm', title: '🎧 Electronic & Dance Anthems', subtitle: 'High energy beats and electronic drops', q: 'dance electronic hits' }
+          { id: 'dance-edm', title: '🎧 Electronic & Dance Anthems', subtitle: 'High energy beats and electronic drops', q: 'dance electronic hits' },
+          { id: 'hindi-hits', title: '🎬 Bollywood & Hindi Hits', subtitle: 'Romantic, cinematic, and unforgettable Hindi songs', q: 'latest bollywood hindi songs 2026' },
+          { id: 'indie-discoveries', title: '🌌 Indie Discoveries', subtitle: 'Fresh alternative songs beyond the charts', q: 'best indie songs 2026' },
+          { id: 'rnb-soul', title: '💫 R&B & Soul Vibes', subtitle: 'Smooth vocals, soulful grooves, and late-night favorites', q: 'rnb soul hits' },
+          { id: 'classic-favorites', title: '🏆 Timeless Favorites', subtitle: 'Songs that never leave the rotation', q: 'greatest songs of all time' }
         ];
       }
 
@@ -212,7 +226,7 @@ export class YouTubeMusicProvider extends MusicProvider {
       results.forEach((res, idx) => {
         const meta = querySets[idx];
         const songs = (res.status === 'fulfilled' ? res.value : [])
-          .slice(0, 20)
+          .slice(0, 30)
           .map(t => this.normalizeTrack(t))
           .filter(Boolean);
 
