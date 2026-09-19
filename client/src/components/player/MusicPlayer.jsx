@@ -86,7 +86,7 @@ export const MusicPlayer = () => {
   const currentDisplayPosition = isSeeking ? seekValue : position;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-20 md:h-24 bg-[#09090b]/95 backdrop-blur-2xl border-t border-white/10 z-40 px-3 md:px-6 flex items-center justify-between shadow-2xl pb-safe">
+    <div className="fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 h-20 md:h-24 bg-[#09090b]/95 backdrop-blur-2xl border-t border-white/10 z-40 px-3 md:px-6 flex items-center justify-between shadow-2xl pb-safe">
       {/* Track Info (Left) */}
       <div className="flex items-center gap-3 w-1/4 min-w-[170px] max-w-[320px]">
         <div

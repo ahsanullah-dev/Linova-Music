@@ -97,7 +97,7 @@ export const AppShell = () => {
   }, [currentTrack, position, duration]);
 
   return (
-    <div className="flex h-screen w-screen bg-[#09090b] text-gray-100 overflow-hidden select-none p-0 md:p-2 md:gap-2">
+    <div className="flex h-[100dvh] min-h-[100dvh] w-screen bg-[#09090b] text-gray-100 overflow-hidden select-none p-0 md:p-2 md:gap-2">
       {/* Desktop Sidebar (Spotify Left Dock) */}
       <div className="hidden md:flex flex-col h-full rounded-2xl overflow-hidden shadow-2xl">
         <Sidebar />
@@ -125,7 +125,7 @@ export const AppShell = () => {
         <TopBar />
 
         {/* Scrollable Viewport */}
-        <main className={`flex-1 min-h-0 ${isAIPage ? `overflow-hidden p-3 ${currentTrack ? 'pb-24 md:pb-28' : 'pb-20 md:pb-3'}` : `overflow-y-auto px-4 sm:px-8 py-6 ${currentTrack ? 'pb-28 md:pb-28' : 'pb-20 md:pb-6'}`}`}>
+        <main className={`flex-1 min-h-0 ${isAIPage ? `overflow-hidden p-3 ${currentTrack ? 'pb-[10.5rem] md:pb-28' : 'pb-20 md:pb-3'}` : `overflow-y-auto px-4 sm:px-8 py-6 ${currentTrack ? 'pb-[10.5rem] md:pb-28' : 'pb-20 md:pb-6'}`}`}>
           {isLyricsOpen && currentTrack && !isAIPage ? (
             <MiddleLyricsView />
           ) : (

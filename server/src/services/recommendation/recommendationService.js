@@ -176,7 +176,7 @@ export const generateRecommendations = async (userId = 'guest_session', category
 
     shelfResults.forEach((res, idx) => {
       const sq = cluster.shelves[idx];
-      const tracks = (res.status === 'fulfilled' ? res.value.tracks : []).slice(0, 20);
+      const tracks = (res.status === 'fulfilled' ? res.value.tracks : []).slice(0, 30);
       if (tracks.length > 0 && !sections.some(s => s.id === sq.id)) {
         sections.push({
           id: sq.id,

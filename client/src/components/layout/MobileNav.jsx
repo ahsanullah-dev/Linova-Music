@@ -9,7 +9,7 @@ export const MobileNav = () => {
     }`;
 
   return (
-    <nav className="md:hidden glass-panel border-t border-white/10 flex items-center justify-around fixed bottom-0 left-0 right-0 z-30 pb-safe">
+    <nav className="md:hidden glass-panel border-t border-white/10 flex items-center justify-around fixed bottom-0 left-0 right-0 z-30 pb-safe min-h-[3.75rem]">
       <NavLink to="/" className={linkClass}>
         <Home className="w-5 h-5 mb-1" />
         <span>Home</span>

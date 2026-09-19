@@ -46,6 +46,13 @@ const buildQueries = (seed) => {
 
   const queries = [];
 
+  if (seed?.title && artist) {
+    // This works for tracks discovered through search too, where the artist
+    // name may not be present in our genre keyword graph.
+    queries.push(`songs similar to ${seed.title} by ${artist}`);
+    queries.push(`${artist} similar artists songs`);
+  }
+
   if (artist) {
     queries.push(`${artist} songs`);
     queries.push(`${artist} best tracks`);
@@ -57,9 +64,7 @@ const buildQueries = (seed) => {
     }
   }
 
-  if (artist) {
-    queries.push(`artists similar to ${artist}`);
-  }
+  if (artist) queries.push(`artists similar to ${artist}`);
 
   if (queries.length === 0) {
     queries.push(seed?.title ? `${seed.title} similar songs` : 'popular songs');
@@ -83,7 +88,7 @@ export const buildRadioQueue = async (seed, excludeIds = [], limit = 20) => {
   ].filter(Boolean));
 
   const results = await Promise.allSettled(
-    queries.slice(0, 5).map((q) => provider.search(q, 'songs'))
+    queries.slice(0, 8).map((q) => provider.search(q, 'songs'))
   );
 
   const picked = [];
