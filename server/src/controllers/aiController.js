@@ -278,12 +278,7 @@ async function callWithRetry(ai, systemInstruction, history, parts) {
         const model = ai.getGenerativeModel(
           {
             model: modelName,
-            systemInstruction,
-<<<<<<< HEAD
             generationConfig: { temperature: 0.9, maxOutputTokens: 3000 }
-=======
-            generationConfig: { temperature: 0.9, maxOutputTokens: 1500 }
->>>>>>> fix/mobile-load-feed
           },
           { timeout: REQUEST_TIMEOUT_MS }
         );
