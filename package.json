@@ -9,6 +9,7 @@
     "client": "npm run dev --prefix client",
     "server": "npm run dev --prefix server",
     "build": "npm run build --prefix client",
+    "android:build": "npm run build --prefix client && npx cap sync android --prefix client",
     "test": "npm run test --prefix server",
     "install:all": "npm install && npm install --prefix client && npm install --prefix server"
   },

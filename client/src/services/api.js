@@ -1,4 +1,31 @@
-const BASE_URL = '/api';
+export const getBaseUrl = () => {
+  // 1. Explicit user override from settings (e.g. if testing against a local dev IP or custom server)
+  const custom = typeof window !== 'undefined' ? localStorage.getItem('linova_backend_url') : null;
+  if (custom && custom.trim()) {
+    const trimmed = custom.trim().replace(/\/+$/, '');
+    return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+  }
+
+  // 2. Vite environment variable
+  if (import.meta.env.VITE_API_URL) {
+    const vUrl = import.meta.env.VITE_API_URL.replace(/\/+$/, '');
+    return vUrl.endsWith('/api') ? vUrl : `${vUrl}/api`;
+  }
+
+  // 3. Android / Capacitor / native app detection
+  if (typeof window !== 'undefined') {
+    const isCapacitor = !!(window.Capacitor?.isNativePlatform?.() || window.Capacitor?.platform === 'android');
+    const isLocalScheme = window.location.protocol === 'capacitor:' || 
+                          window.location.protocol === 'file:' || 
+                          (window.location.hostname === 'localhost' && (!window.location.port || window.location.port === '80'));
+    if (isCapacitor || isLocalScheme) {
+      return 'https://linova-music.onrender.com/api';
+    }
+  }
+
+  // 4. Default web fallback (local Vite proxy or same-origin rewrite)
+  return '/api';
+};
 
 class ApiService {
   constructor() {
@@ -38,11 +65,12 @@ class ApiService {
     const MAX_ATTEMPTS = isSlowAiCall ? 1 : 3;
     let lastError;
 
+    const baseUrl = getBaseUrl();
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), timeoutMs);
       try {
-        const response = await fetch(`${BASE_URL}${endpoint}`, {
+        const response = await fetch(`${baseUrl}${endpoint}`, {
           ...options,
           headers,
           signal: controller.signal

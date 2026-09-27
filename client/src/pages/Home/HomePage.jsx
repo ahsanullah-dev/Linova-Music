@@ -8,13 +8,15 @@ import { PlaylistCard } from '../../components/music/PlaylistCard.jsx';
 import { useAuthStore } from '../../stores/authStore.js';
 import { usePlayerStore } from '../../stores/playerStore.js';
 import { useLibraryStore } from '../../stores/libraryStore.js';
-import { Play, Pause, Heart, ChevronLeft, ChevronRight, Sparkles, Flame, Radio, Disc3, ShieldCheck, Loader2 } from 'lucide-react';
+import { Play, Pause, Heart, ChevronLeft, ChevronRight, Sparkles, Flame, Radio, Disc3, ShieldCheck, Loader2, Plus } from 'lucide-react';
+import { useAppStore } from '../../stores/appStore.js';
 
 export const HomePage = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayerStore();
-  const { likedTrackIds, toggleLike } = useLibraryStore();
+  const { likedTrackIds, toggleLike, playlists } = useLibraryStore();
+  const { openCreatePlaylistModal, openAuthModal } = useAppStore();
 
   const [activeTab, setActiveTab] = useState('all'); // all | bangla | rock | pop | chill | hiphop
   const [sections, setSections] = useState([]);
@@ -184,52 +186,65 @@ export const HomePage = () => {
             </div>
           )}
 
-          {/* Quick Play Grid */}
-          {quickTracks.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-lg font-extrabold text-white tracking-tight flex items-center gap-2">
-                <span>Quick Access</span>
-              </h3>
+          {/* Quick Access - shortcuts to things the user can open (Liked Songs,
+              their own playlists, a create-playlist prompt), not a second copy
+              of the track list already shown in Jump Back In below. */}
+          <div className="space-y-3">
+            <h3 className="text-lg font-extrabold text-white tracking-tight flex items-center gap-2">
+              <span>Quick Access</span>
+            </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* Liked Songs Tile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Liked Songs Tile */}
+              <div
+                onClick={() => navigate('/library?tab=liked')}
+                className="linova-quick-tile flex items-center gap-3.5 rounded-2xl p-2.5 cursor-pointer group"
+              >
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-500 via-pink-600 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
+                  <Heart className="w-5 h-5 fill-white" />
+                </div>
+                <span className="font-bold text-sm text-white truncate flex-1">Liked Songs</span>
+                <div className="w-9 h-9 rounded-full bg-linova-primary text-white flex items-center justify-center shadow-lg mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Play className="w-4 h-4 fill-white ml-0.5" />
+                </div>
+              </div>
+
+              {/* User's own playlists */}
+              {playlists.slice(0, 6).map((pl) => (
                 <div
-                  onClick={() => navigate('/library?tab=liked')}
-                  className="linova-quick-tile flex items-center gap-3.5 rounded-2xl p-2.5 cursor-pointer group"
+                  key={`ql-${pl._id}`}
+                  onClick={() => navigate(`/playlist/${pl._id}`)}
+                  className="linova-quick-tile flex items-center gap-3.5 rounded-2xl p-2 cursor-pointer group"
                 >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-500 via-pink-600 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
-                    <Heart className="w-5 h-5 fill-white" />
-                  </div>
-                  <span className="font-bold text-sm text-white truncate flex-1">Liked Songs</span>
-                  <div className="w-9 h-9 rounded-full bg-linova-primary text-white flex items-center justify-center shadow-lg mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Play className="w-4 h-4 fill-white ml-0.5" />
+                  <img
+                    src={pl.coverImage || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&auto=format&fit=crop&q=80'}
+                    alt={pl.name}
+                    className="w-12 h-12 rounded-xl object-cover flex-shrink-0 shadow-sm"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <h5 className="font-bold text-sm text-white truncate group-hover:text-linova-cyan transition-colors">{pl.name}</h5>
+                    <p className="text-xs text-gray-400 truncate">{(pl.tracks?.length || 0)} songs</p>
                   </div>
                 </div>
+              ))}
 
-                {/* Quick Access Top Hits */}
-                {quickTracks.slice(0, 7).map((track) => (
-                  <div
-                    key={`quick-${track.id}`}
-                    onClick={() => playTrack(track, quickTracks)}
-                    className="linova-quick-tile flex items-center gap-3.5 rounded-2xl p-2 cursor-pointer group"
-                  >
-                    <img
-                      src={track.artwork}
-                      alt={track.title}
-                      className="w-12 h-12 rounded-xl object-cover flex-shrink-0 shadow-sm"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <h5 className="font-bold text-sm text-white truncate group-hover:text-linova-cyan transition-colors">{track.title}</h5>
-                      <p className="text-xs text-gray-400 truncate">{track.artist}</p>
-                    </div>
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-linova-primary to-linova-cyan text-white flex items-center justify-center shadow-lg mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Play className="w-4 h-4 fill-white ml-0.5" />
-                    </div>
+              {/* Prompt to create a playlist when there's room and few/none exist yet */}
+              {playlists.length < 7 && (
+                <div
+                  onClick={() => (isAuthenticated ? openCreatePlaylistModal() : openAuthModal('login'))}
+                  className="linova-quick-tile flex items-center gap-3.5 rounded-2xl p-2.5 cursor-pointer group border border-dashed border-white/15"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-gray-300 flex-shrink-0 group-hover:bg-white/10 transition-colors">
+                    <Plus className="w-5 h-5" />
                   </div>
-                ))}
-              </div>
+                  <span className="font-bold text-sm text-gray-300 truncate flex-1 group-hover:text-white">
+                    Create Playlist
+                  </span>
+                </div>
+              )}
             </div>
-          )}
+          </div>
+
 
           {/* Dynamic Discovery Shelves */}
           {sections.map((sec) => (

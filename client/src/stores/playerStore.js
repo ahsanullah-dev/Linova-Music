@@ -185,14 +185,14 @@ export const usePlayerStore = create((set, get) => ({
         set({ activeEngine: 'native' });
         audioEngine.initWebAudio();
         audioEngine.resumeContext();
-        audioEngine.audio.src = offlineBlobUrl;
+        audioEngine.setSource(offlineBlobUrl);
         audioEngine.audio.load();
         await audioEngine.audio.play();
         set({ isPlaying: true });
       } else {
         // Stream exact YouTube track video audio
         audioEngine.audio.pause();
-        audioEngine.audio.src = '';
+        audioEngine.setSource('');
         set({ activeEngine: 'youtube' });
         
         const videoId = track.videoId || track.id.replace(/^yt_/, '');

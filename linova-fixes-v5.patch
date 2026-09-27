@@ -1,0 +1,350 @@
+diff --git a/client/src/pages/Home/HomePage.jsx b/client/src/pages/Home/HomePage.jsx
+index d5eea5a..91f55d1 100644
+--- a/client/src/pages/Home/HomePage.jsx
++++ b/client/src/pages/Home/HomePage.jsx
+@@ -8,13 +8,15 @@ import { PlaylistCard } from '../../components/music/PlaylistCard.jsx';
+ import { useAuthStore } from '../../stores/authStore.js';
+ import { usePlayerStore } from '../../stores/playerStore.js';
+ import { useLibraryStore } from '../../stores/libraryStore.js';
+-import { Play, Pause, Heart, ChevronLeft, ChevronRight, Sparkles, Flame, Radio, Disc3, ShieldCheck, Loader2 } from 'lucide-react';
++import { Play, Pause, Heart, ChevronLeft, ChevronRight, Sparkles, Flame, Radio, Disc3, ShieldCheck, Loader2, Plus } from 'lucide-react';
++import { useAppStore } from '../../stores/appStore.js';
+ 
+ export const HomePage = () => {
+   const navigate = useNavigate();
+-  const { user } = useAuthStore();
++  const { user, isAuthenticated } = useAuthStore();
+   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayerStore();
+-  const { likedTrackIds, toggleLike } = useLibraryStore();
++  const { likedTrackIds, toggleLike, playlists } = useLibraryStore();
++  const { openCreatePlaylistModal, openAuthModal } = useAppStore();
+ 
+   const [activeTab, setActiveTab] = useState('all'); // all | bangla | rock | pop | chill | hiphop
+   const [sections, setSections] = useState([]);
+@@ -184,52 +186,65 @@ export const HomePage = () => {
+             </div>
+           )}
+ 
+-          {/* Quick Play Grid */}
+-          {quickTracks.length > 0 && (
+-            <div className="space-y-3">
+-              <h3 className="text-lg font-extrabold text-white tracking-tight flex items-center gap-2">
+-                <span>Quick Access</span>
+-              </h3>
++          {/* Quick Access - shortcuts to things the user can open (Liked Songs,
++              their own playlists, a create-playlist prompt), not a second copy
++              of the track list already shown in Jump Back In below. */}
++          <div className="space-y-3">
++            <h3 className="text-lg font-extrabold text-white tracking-tight flex items-center gap-2">
++              <span>Quick Access</span>
++            </h3>
+ 
+-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+-                {/* Liked Songs Tile */}
++            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
++              {/* Liked Songs Tile */}
++              <div
++                onClick={() => navigate('/library?tab=liked')}
++                className="linova-quick-tile flex items-center gap-3.5 rounded-2xl p-2.5 cursor-pointer group"
++              >
++                <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-500 via-pink-600 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
++                  <Heart className="w-5 h-5 fill-white" />
++                </div>
++                <span className="font-bold text-sm text-white truncate flex-1">Liked Songs</span>
++                <div className="w-9 h-9 rounded-full bg-linova-primary text-white flex items-center justify-center shadow-lg mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
++                  <Play className="w-4 h-4 fill-white ml-0.5" />
++                </div>
++              </div>
++
++              {/* User's own playlists */}
++              {playlists.slice(0, 6).map((pl) => (
+                 <div
+-                  onClick={() => navigate('/library?tab=liked')}
+-                  className="linova-quick-tile flex items-center gap-3.5 rounded-2xl p-2.5 cursor-pointer group"
++                  key={`ql-${pl._id}`}
++                  onClick={() => navigate(`/playlist/${pl._id}`)}
++                  className="linova-quick-tile flex items-center gap-3.5 rounded-2xl p-2 cursor-pointer group"
+                 >
+-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-500 via-pink-600 to-indigo-600 flex items-center justify-center text-white flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
+-                    <Heart className="w-5 h-5 fill-white" />
+-                  </div>
+-                  <span className="font-bold text-sm text-white truncate flex-1">Liked Songs</span>
+-                  <div className="w-9 h-9 rounded-full bg-linova-primary text-white flex items-center justify-center shadow-lg mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+-                    <Play className="w-4 h-4 fill-white ml-0.5" />
++                  <img
++                    src={pl.coverImage || 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=200&auto=format&fit=crop&q=80'}
++                    alt={pl.name}
++                    className="w-12 h-12 rounded-xl object-cover flex-shrink-0 shadow-sm"
++                  />
++                  <div className="min-w-0 flex-1">
++                    <h5 className="font-bold text-sm text-white truncate group-hover:text-linova-cyan transition-colors">{pl.name}</h5>
++                    <p className="text-xs text-gray-400 truncate">{(pl.tracks?.length || 0)} songs</p>
+                   </div>
+                 </div>
++              ))}
+ 
+-                {/* Quick Access Top Hits */}
+-                {quickTracks.slice(0, 7).map((track) => (
+-                  <div
+-                    key={`quick-${track.id}`}
+-                    onClick={() => playTrack(track, quickTracks)}
+-                    className="linova-quick-tile flex items-center gap-3.5 rounded-2xl p-2 cursor-pointer group"
+-                  >
+-                    <img
+-                      src={track.artwork}
+-                      alt={track.title}
+-                      className="w-12 h-12 rounded-xl object-cover flex-shrink-0 shadow-sm"
+-                    />
+-                    <div className="min-w-0 flex-1">
+-                      <h5 className="font-bold text-sm text-white truncate group-hover:text-linova-cyan transition-colors">{track.title}</h5>
+-                      <p className="text-xs text-gray-400 truncate">{track.artist}</p>
+-                    </div>
+-                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-linova-primary to-linova-cyan text-white flex items-center justify-center shadow-lg mr-2 opacity-0 group-hover:opacity-100 transition-opacity">
+-                      <Play className="w-4 h-4 fill-white ml-0.5" />
+-                    </div>
++              {/* Prompt to create a playlist when there's room and few/none exist yet */}
++              {playlists.length < 7 && (
++                <div
++                  onClick={() => (isAuthenticated ? openCreatePlaylistModal() : openAuthModal('login'))}
++                  className="linova-quick-tile flex items-center gap-3.5 rounded-2xl p-2.5 cursor-pointer group border border-dashed border-white/15"
++                >
++                  <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center text-gray-300 flex-shrink-0 group-hover:bg-white/10 transition-colors">
++                    <Plus className="w-5 h-5" />
+                   </div>
+-                ))}
+-              </div>
++                  <span className="font-bold text-sm text-gray-300 truncate flex-1 group-hover:text-white">
++                    Create Playlist
++                  </span>
++                </div>
++              )}
+             </div>
+-          )}
++          </div>
++
+ 
+           {/* Dynamic Discovery Shelves */}
+           {sections.map((sec) => (
+diff --git a/server/src/controllers/aiController.js b/server/src/controllers/aiController.js
+index ffe9c79..26e1114 100644
+--- a/server/src/controllers/aiController.js
++++ b/server/src/controllers/aiController.js
+@@ -22,9 +22,9 @@ CRITICAL RULE — When you suggest songs, ALWAYS embed them as structured JSON i
+ {"title": "EXACT_SONG_TITLE", "artist": "EXACT_ARTIST_NAME", "query": "best search query to find this song"}
+ </song_suggestion>
+ 
+-You can include 1-5 song suggestions per response. Never list a song suggestion as plain text — always use the XML tag format so the user can play it directly.
++You can include 1-15 song suggestions per response — when the user asks for a list, playlist, or "some songs like this", give a generous list (aim for 10-15) rather than just a couple. Never list a song suggestion as plain text — always use the XML tag format so the user can play it directly.
+ 
+-Keep responses concise (3-6 sentences), warm, and music-focused. Never mention YouTube, ytmusic, or any external service names. Do not reveal you are built on Gemini or any Google product — you are simply "Linova AI".`;
++Keep prose concise: 3-6 sentences for ordinary conversation. When a response includes a longer list of song suggestions, prose can extend to 1-2 short sentences of context per suggestion (or a brief shared intro) rather than being padded — the song tags themselves carry the list, so don't repeat the same information in paragraph form. Never mention YouTube, ytmusic, or any external service names. Do not reveal you are built on Gemini or any Google product — you are simply "Linova AI".`;
+ 
+ // Always read key fresh from process.env (no caching — works with nodemon restarts)
+ const getGenAI = () => {
+@@ -236,7 +236,7 @@ async function callWithRetry(ai, systemInstruction, history, parts) {
+           {
+             model: modelName,
+             systemInstruction,
+-            generationConfig: { temperature: 0.9, maxOutputTokens: 900 }
++            generationConfig: { temperature: 0.9, maxOutputTokens: 1500 }
+           },
+           { timeout: REQUEST_TIMEOUT_MS }
+         );
+diff --git a/server/src/services/recommendation/recommendationService.js b/server/src/services/recommendation/recommendationService.js
+index 7d3243c..0718762 100644
+--- a/server/src/services/recommendation/recommendationService.js
++++ b/server/src/services/recommendation/recommendationService.js
+@@ -92,9 +92,74 @@ export const generateRecommendations = async (userId = 'guest_session', category
+   const secondaryGenreKey = rankedGenres[1] || null;
+   const ytmProvider = providerManager.getProvider('youtube-music');
+ 
++  // Everything below hits the external YouTube Music API. It was previously
++  // three sequential stages - await the artist-radio batch, THEN await the
++  // genre-shelf batch, THEN await the explore feed - so total load time was
++  // additive across all of them even though none of these calls depend on
++  // each other's results. Firing them as one combined batch means total
++  // wait time is roughly the slowest single call instead of the sum of all
++  // of them, and it's what makes room for more shelves without a
++  // proportional hit to load time.
++  const jobs = [];
++
++  // 1b. "Because you listened to <Artist>" - reuses the same genre-matched
++  // radio builder that powers autoplay, seeded from the user's most-played
++  // and most-liked artists. This is the part that actually moves as
++  // listening history grows, rather than only reshuffling within a fixed
++  // genre's static shelf queries.
++  const artistPlayCounts = new Map();
++  recentHistory.forEach(h => {
++    const a = (h.track || h)?.artist;
++    if (a) artistPlayCounts.set(a, (artistPlayCounts.get(a) || 0) + 1);
++  });
++  likedSongs.forEach(l => {
++    const a = (l.track || l)?.artist;
++    if (a) artistPlayCounts.set(a, (artistPlayCounts.get(a) || 0) + 2); // liked counts extra
++  });
++
++  const topArtistNames = Array.from(artistPlayCounts.entries())
++    .sort((a, b) => b[1] - a[1])
++    .map(([name]) => name)
++    .slice(0, 3); // was 2 - one more "because you listened to" shelf
++
++  for (const artistName of topArtistNames) {
++    const fromHistory = recentHistory.find(h => (h.track || h)?.artist === artistName);
++    const fromLiked = likedSongs.find(l => (l.track || l)?.artist === artistName);
++    const seed = (fromHistory?.track || fromHistory) || (fromLiked?.track || fromLiked) || { artist: artistName };
++
++    jobs.push({
++      kind: 'artist-radio',
++      artistName,
++      promise: buildRadioQueue(seed, [], 20)
++    });
++  }
++
++  // 2. Genre-Personalized Daily Mix Shelves - blends the top 3 detected
++  // genres (was 1, then 2) so the feed reflects more of what someone
++  // actually plays instead of collapsing to a single narrow winner.
++  const genreKeysToUse = [topGenreKey, secondaryGenreKey, rankedGenres[2] || null].filter(Boolean);
++  for (const genreKey of genreKeysToUse) {
++    const cluster = GENRE_CLUSTERS[genreKey];
++    if (!cluster) continue;
++    for (const shelf of cluster.shelves) {
++      jobs.push({
++        kind: 'genre-shelf',
++        shelfMeta: shelf,
++        promise: ytmProvider.search(shelf.q, 'songs')
++      });
++    }
++  }
++
++  // 3. Dynamic discovery feed (Trending, Rock, Acoustic, etc.) from provider
++  jobs.push({ kind: 'explore', promise: ytmProvider.getHomeSections(uid, category) });
++
++  const settled = await Promise.allSettled(jobs.map(j => j.promise));
++
+   const sections = [];
+ 
+-  // 1. "Jump Back In" - User's authentic recent listening history
++  // 1. "Jump Back In" - User's authentic recent listening history. Placed
++  // first in display order, built from data we already have (no network
++  // call), so it doesn't need to wait on the batch above at all.
+   if (recentHistory.length > 0) {
+     const uniqueRecentTracks = [];
+     const seen = new Set();
+@@ -116,68 +181,33 @@ export const generateRecommendations = async (userId = 'guest_session', category
+     }
+   }
+ 
+-  // 1b. "Because you listened to <Artist>" - reuses the same genre-matched
+-  // radio builder that powers autoplay, seeded from the user's most-played
+-  // and most-liked artists. This is the part that actually moves as
+-  // listening history grows, rather than only reshuffling within a fixed
+-  // genre's static shelf queries.
+-  const artistPlayCounts = new Map();
+-  recentHistory.forEach(h => {
+-    const a = (h.track || h)?.artist;
+-    if (a) artistPlayCounts.set(a, (artistPlayCounts.get(a) || 0) + 1);
+-  });
+-  likedSongs.forEach(l => {
+-    const a = (l.track || l)?.artist;
+-    if (a) artistPlayCounts.set(a, (artistPlayCounts.get(a) || 0) + 2); // liked counts extra
+-  });
+-
+-  const topArtistNames = Array.from(artistPlayCounts.entries())
+-    .sort((a, b) => b[1] - a[1])
+-    .map(([name]) => name)
+-    .slice(0, 2);
+-
+-  if (topArtistNames.length > 0) {
+-    const seedTracksByArtist = topArtistNames.map(name => {
+-      const fromHistory = recentHistory.find(h => (h.track || h)?.artist === name);
+-      const fromLiked = likedSongs.find(l => (l.track || l)?.artist === name);
+-      return (fromHistory?.track || fromHistory) || (fromLiked?.track || fromLiked) || { artist: name };
+-    });
++  const seenShelfIds = new Set();
+ 
+-    const radioResults = await Promise.allSettled(
+-      seedTracksByArtist.map(seed => buildRadioQueue(seed, [], 15))
+-    );
++  settled.forEach((res, idx) => {
++    const job = jobs[idx];
+ 
+-    radioResults.forEach((res, idx) => {
++    if (job.kind === 'artist-radio') {
+       if (res.status !== 'fulfilled') return;
+-      const artistName = topArtistNames[idx];
+       const tracks = res.value?.tracks || [];
+-      if (tracks.length > 0) {
++      const id = `because-you-listened-${job.artistName.toLowerCase().replace(/\s+/g, '-')}`;
++      if (tracks.length > 0 && !seenShelfIds.has(id)) {
++        seenShelfIds.add(id);
+         sections.push({
+-          id: `because-you-listened-${artistName.toLowerCase().replace(/\s+/g, '-')}`,
+-          title: `Because you listened to ${artistName}`,
+-          subtitle: `More tracks in the same vein as ${artistName}`,
++          id,
++          title: `Because you listened to ${job.artistName}`,
++          subtitle: `More tracks in the same vein as ${job.artistName}`,
+           type: 'tracks',
+           items: tracks
+         });
+       }
+-    });
+-  }
+-
+-  // 2. Genre-Personalized Daily Mix Shelves - blends the top 2 detected
+-  // genres so the feed reflects more than just whichever genre is narrowly
+-  // in first place.
+-  for (const genreKey of [topGenreKey, secondaryGenreKey].filter(Boolean)) {
+-    const cluster = GENRE_CLUSTERS[genreKey];
+-    if (!cluster) continue;
+-
+-    const shelfResults = await Promise.allSettled(
+-      cluster.shelves.map(sq => ytmProvider.search(sq.q, 'songs'))
+-    );
++      return;
++    }
+ 
+-    shelfResults.forEach((res, idx) => {
+-      const sq = cluster.shelves[idx];
++    if (job.kind === 'genre-shelf') {
++      const sq = job.shelfMeta;
+       const tracks = (res.status === 'fulfilled' ? res.value.tracks : []).slice(0, 20);
+-      if (tracks.length > 0 && !sections.some(s => s.id === sq.id)) {
++      if (tracks.length > 0 && !seenShelfIds.has(sq.id)) {
++        seenShelfIds.add(sq.id);
+         sections.push({
+           id: sq.id,
+           title: sq.title,
+@@ -186,18 +216,22 @@ export const generateRecommendations = async (userId = 'guest_session', category
+           items: tracks
+         });
+       }
+-    });
+-  }
++      return;
++    }
+ 
+-  // 3. Add dynamic discovery feed (Trending, Rock, Acoustic) from provider
+-  const exploreFeed = await ytmProvider.getHomeSections(uid, category);
+-  if (exploreFeed?.sections?.length > 0) {
+-    exploreFeed.sections.forEach(sec => {
+-      if (!sections.some(s => s.id === sec.id)) {
+-        sections.push(sec);
++    if (job.kind === 'explore') {
++      if (res.status !== 'fulfilled') return;
++      const exploreFeed = res.value;
++      if (exploreFeed?.sections?.length > 0) {
++        exploreFeed.sections.forEach(sec => {
++          if (!seenShelfIds.has(sec.id)) {
++            seenShelfIds.add(sec.id);
++            sections.push(sec);
++          }
++        });
+       }
+-    });
+-  }
++    }
++  });
+ 
+   // Extract top artist names for profile
+   const artistFreq = new Map();

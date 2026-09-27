@@ -205,7 +205,11 @@ export const streamAudioTrack = async (req, res, next) => {
       });
     }
 
-    if (proxy === 'true') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', '*');
+
+    if (proxy === 'true' || req.query.download === 'true') {
       const headers = {};
       if (req.headers.range) {
         headers['Range'] = req.headers.range;
@@ -213,7 +217,10 @@ export const streamAudioTrack = async (req, res, next) => {
       const fetchResp = await fetch(audioUrl, { headers });
       res.status(fetchResp.status);
       fetchResp.headers.forEach((value, key) => {
-        res.setHeader(key, value);
+        // Forward content-related headers
+        if (['content-type', 'content-length', 'content-range', 'accept-ranges'].includes(key.toLowerCase())) {
+          res.setHeader(key, value);
+        }
       });
       const buffer = await fetchResp.arrayBuffer();
       return res.send(Buffer.from(buffer));
