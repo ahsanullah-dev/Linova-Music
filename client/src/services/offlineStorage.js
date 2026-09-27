@@ -1,9 +1,47 @@
 import { get, set, del, keys, entries } from 'idb-keyval';
+import CryptoJS from 'crypto-js';
 import { getBaseUrl } from './api.js';
 
 const TRACK_PREFIX = 'linova_offline_track_';
 const AUDIO_PREFIX = 'linova_offline_audio_';
 const activeBlobUrls = new Map();
+
+function decryptSaavnUrl(enc) {
+  if (!enc) return null;
+  try {
+    const key = CryptoJS.enc.Utf8.parse('38346591');
+    const decrypted = CryptoJS.DES.decrypt(
+      { ciphertext: CryptoJS.enc.Base64.parse(enc) },
+      key,
+      { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }
+    );
+    const rawUrl = decrypted.toString(CryptoJS.enc.Utf8);
+    if (!rawUrl) return null;
+    return rawUrl.replace('_96.mp4', '_320.mp4').replace('_96.mp3', '_320.mp3');
+  } catch {
+    return null;
+  }
+}
+
+async function resolveDirectAudioUrl(track) {
+  try {
+    const query = `${track.title || ''} ${track.artist || ''}`.trim();
+    if (!query) return null;
+    const searchUrl = `https://www.jiosaavn.com/api.php?__call=search.getResults&q=${encodeURIComponent(query)}&_format=json&p=1&n=3&_marker=0&ctx=web6dot0`;
+    const res = await fetch(searchUrl, { signal: AbortSignal.timeout(6000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const results = data.results || [];
+    for (const item of results) {
+      const encUrl = item.encrypted_media_url || item.more_info?.encrypted_media_url;
+      const decrypted = decryptSaavnUrl(encUrl) || item.more_info?.vlink;
+      if (decrypted) return decrypted;
+    }
+  } catch (e) {
+    console.warn('[Offline Storage] Direct stream fallback error:', e.message);
+  }
+  return null;
+}
 
 async function blobToDataUrl(blob) {
   return new Promise((resolve) => {
@@ -40,10 +78,27 @@ export const offlineStorage = {
 
       if (onProgress) onProgress({ status: 'downloading', percent: 15 });
 
-      // Fetch the audio binary stream as a Blob
-      const response = await fetch(targetUrl);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch audio stream (HTTP ${response.status})`);
+      let response = null;
+      try {
+        const primaryRes = await fetch(targetUrl);
+        if (primaryRes.ok) {
+          response = primaryRes;
+        }
+      } catch (err) {
+        console.warn('[Offline Storage] Server stream fetch warning:', err.message);
+      }
+
+      // If server stream was unavailable, cold, or failed, fallback to direct CDN resolver
+      if (!response) {
+        if (onProgress) onProgress({ status: 'resolving_stream', percent: 30 });
+        const directUrl = await resolveDirectAudioUrl(track);
+        if (directUrl) {
+          response = await fetch(directUrl);
+        }
+      }
+
+      if (!response || !response.ok) {
+        throw new Error('Could not download audio stream. Server is temporarily unavailable or waking up.');
       }
 
       if (onProgress) onProgress({ status: 'downloading', percent: 55 });
