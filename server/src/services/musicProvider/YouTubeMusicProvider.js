@@ -146,8 +146,56 @@ export class YouTubeMusicProvider extends MusicProvider {
   }
 
   async resolveAudioStream(videoId, title = '', artist = '') {
-    // For web clients, audio streams directly and accurately via the integrated player engine
-    return `/api/music/stream/${videoId}`;
+    try {
+      const cacheKey = `${videoId}_${title}_${artist}`;
+      if (this._streamCache && this._streamCache.has(cacheKey)) {
+        return this._streamCache.get(cacheKey);
+      }
+      if (!this._streamCache) {
+        this._streamCache = new Map();
+      }
+
+      let searchTitle = cleanText(title || '');
+      let searchArtist = cleanText(artist || '');
+
+      if (!searchTitle && videoId) {
+        await this.ensureInit();
+        try {
+          const song = await this.ytm.getSong(videoId);
+          if (song) {
+            searchTitle = cleanText(song.name || song.title || '');
+            searchArtist = cleanText(song.artist?.name || (Array.isArray(song.artists) ? song.artists.map(a => a.name).join(' ') : ''));
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      const { GlobalMusicProvider } = await import('./GlobalMusicProvider.js');
+      const globalProv = new GlobalMusicProvider();
+
+      if (searchTitle) {
+        // First try: title + artist
+        const query = `${searchTitle} ${searchArtist}`.trim();
+        const results = await globalProv.fetchSaavnSongs(query, 3);
+        if (results && results.length > 0 && results[0].audioUrl) {
+          this._streamCache.set(cacheKey, results[0].audioUrl);
+          return results[0].audioUrl;
+        }
+
+        // Second try: title alone
+        const titleOnlyResults = await globalProv.fetchSaavnSongs(searchTitle, 3);
+        if (titleOnlyResults && titleOnlyResults.length > 0 && titleOnlyResults[0].audioUrl) {
+          this._streamCache.set(cacheKey, titleOnlyResults[0].audioUrl);
+          return titleOnlyResults[0].audioUrl;
+        }
+      }
+
+      return null;
+    } catch (err) {
+      console.error('[YouTubeMusicProvider] resolveAudioStream error:', err.message);
+      return null;
+    }
   }
 
   async getHomeSections(userId, category = 'all') {

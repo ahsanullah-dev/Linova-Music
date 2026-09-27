@@ -8,7 +8,6 @@ class AudioEngine {
   constructor() {
     this.audio = new Audio();
     this.audio.preload = 'auto';
-    this.audio.crossOrigin = 'anonymous';
 
     this.audioCtx = null;
     this.sourceNode = null;
@@ -20,6 +19,21 @@ class AudioEngine {
     this.isInitialized = false;
 
     this.baseLoudnessMultiplier = 1.4; // 140% clean broadcast studio loudness
+  }
+
+  setSource(url) {
+    if (!url) {
+      this.audio.src = '';
+      return;
+    }
+    const isBlob = typeof url === 'string' && (url.startsWith('blob:') || url.startsWith('data:'));
+    if (isBlob) {
+      this.audio.removeAttribute('crossorigin');
+      this.audio.crossOrigin = null;
+    } else {
+      this.audio.crossOrigin = 'anonymous';
+    }
+    this.audio.src = url;
   }
 
   initWebAudio() {

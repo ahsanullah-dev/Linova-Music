@@ -1,0 +1,20 @@
+{
+  "appId": "com.linova.music",
+  "appName": "Linova Music",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#09090b",
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#09090b",
+      "showSpinner": false
+    }
+  }
+}
